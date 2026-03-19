@@ -132,6 +132,8 @@ class AccountViewSet(viewsets.ModelViewSet):
         
         return Response(serializer.data)
 
+
+
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     
@@ -228,6 +230,21 @@ class TransactionViewSet(viewsets.ModelViewSet):
             .annotate(total_spent=Sum('amount'))
         return Response(sanctioned_transactions)
 
+    @action(detail=True, methods=['get'], url_path='spending-trends')
+    def spending_trends(self, request, pk=None):
+        return Response({"message": "Spending trends for account "})
+
+    @action(detail=True, methods=['post'], url_path='enable-roundup')
+    def enable_roundup(self, request, pk=None):
+        return Response({"message": "Roundup enabled for account "})
+
+    @action(detail=True, methods=['post'], url_path='reclaim-roundup')
+    def reclaim_roundup(self, request, pk=None):
+        return Response({"message": "Round-up reclaimed"})
+
+    @action(detail=True, methods=['get'])
+    def roundups(self, request, pk=None):
+        return Response({"savings": True})
 
 class BusinessViewSet(viewsets.ModelViewSet):
     queryset = Business.objects.all()

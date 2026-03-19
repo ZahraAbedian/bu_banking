@@ -5,7 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from .views import AccountViewSet, TransactionViewSet, BusinessViewSet
+from .views import AccountViewSet, TransactionViewSet, BusinessViewSet, UserRegistrationView
 from .test_view import TestView
 import logging
 import traceback
@@ -22,9 +22,12 @@ router = DefaultRouter()
 router.register(r'accounts', AccountViewSet, basename='account')
 router.register(r'transactions', TransactionViewSet, basename='transaction')
 router.register(r'businesses', BusinessViewSet)
+# router.register(r'user-registration', UserRegistrationView, basename='user-registration')
 
 urlpatterns = [
+    path('register/', UserRegistrationView.as_view(), name='user-registration'),
     path('', include(router.urls)),
+    
     # Test routing with very simple views
     path('simple-register/', SimpleRegisterView.as_view(), name='simple-registration'),
     path('test-view/', TestView.as_view(), name='banking-test-view'),
