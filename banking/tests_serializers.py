@@ -4,19 +4,19 @@ from rest_framework.test import APITestCase
 from django.contrib.auth.models import User
 from .models import Account, Business 
 from decimal import Decimal
-from .serializers import TransactionSerializer
+from banking.serializers import TransactionSerializer
 
 class TransactionSerializerTest(TestCase):
     def setUp(self):
         self.user = User.objects.create_user(username='testuser')
         self.account1 = Account.objects.create(
             user=self.user,
-            name='Main'
+            name='Main',
             starting_balance=1000
         )
         self.account2 = Account.objects.create(
             user=self.user,
-            name='Savings'
+            name='Savings',
             starting_balance=500
         )
         self.business = Business.objects.create(

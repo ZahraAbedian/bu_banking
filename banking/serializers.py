@@ -40,14 +40,14 @@ class TransactionSerializer(serializers.ModelSerializer):
 
         if transaction_type == 'transfer':
             if not to_account:
-                raise serializer.ValidationError({'to_account': 'A transfer must include a destination account.'})
+                raise serializers.ValidationError({'to_account': 'A transfer must include a destination account.'})
             
             if from_account and to_account and from_account == to_account:
-                raise serializer.ValidationError({'to_account': 'Source and destination accounts cannot be the same.'})
+                raise serializers.ValidationError({'to_account': 'Source and destination accounts cannot be the same.'})
 
         if transaction_type == 'payment':
             if not business:
-                raise serializer.ValidationError({'business': 'A payment must include a business.'}) 
+                raise serializers.ValidationError({'business': 'A payment must include a business.'}) 
 
         return attrs   
 
