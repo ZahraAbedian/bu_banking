@@ -25,10 +25,32 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = ['id', 'transaction_type', 'amount', 'from_account', 'to_account', 'business', 'timestamp']
     
+    # check one filed
     def validate_amount(self, value):
         if value <= 0:
             raise serializers.ValidationError("Amount must be greater than 0")
         return value
+    
+    # check relationships between fields
+    def validate(self, attrs):
+        transaction_type = attrs.get('transaction_type')
+        from_account = attrs.get('from_account')
+        to_account = attrs.get('to_account')
+        business = attrs.get('business')
+
+        if transaction_type == 'transfer':
+            if not to_account:
+                raise serilaizer.ValidationError({'to_account': 'A transfer must include a destination account.'})
+            
+            if from_account and to_account and from_account == to_account:
+                raise serilaizer.ValidationError({'to_account': 'Source and destination accounts cannot be the same.'})
+
+        if transaction_type == 'payment':
+            if not business:
+                raise serializer.ValidationError({'business': 'A payment must include a business.'}) 
+
+        return attrs   
+
 
 class BusinessSerializer(serializers.ModelSerializer):
     class Meta:
