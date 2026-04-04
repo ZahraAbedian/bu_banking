@@ -32,3 +32,56 @@ class TestView(APIView):
             "path": request.path,
             "method": request.method
         }, status=status.HTTP_200_OK)
+
+
+# Transaction API Test
+
+from django.contrib.auth.models import User
+from rest_framework import status
+from rest_framework.test import APITestCase
+from .models import Account, Business
+
+class TransactionAPITest(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='pass1234')
+        self.client.force_authenticate(user=self.user)
+        
+        self.account1 = Account.objects.create(
+            user=self.user,
+            name='Main',
+            starting_balance=1000
+        )
+        self.account2 = Account.objects.create(
+            user=self.user,
+            name='Savings',
+            starting_balance=500
+        )
+        self.business = Business.objects.create(
+            name='Coffee Shop',
+            category='food',
+            sanctioned=False
+        )
+
+        self.url = '/api/transactions/'
+        
+    # test 1: valid transfer succeeds
+    def test_create_valid_transfer(self):
+        payload = {
+            'transaction_type': 'transfer',
+            'amount': '50.00',
+            'from_account': str(self.account1.id),
+            'to_account' : str(self.account2.id),
+        }
+        response = self.client.post(self.url, payload, format='json')
+        self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_200_OK])
+        
+    # test 2: invalide transfer fails
+    def test_create_transfer_without_to_account_fails(self):
+        payload = {
+            'transaction_type': 'transfer',
+            'amount': '50.00',
+            'from_account': str(self.account1.id),
+        }
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('to_account', response.data)
