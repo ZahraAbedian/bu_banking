@@ -35,6 +35,7 @@ class AuthTestCase(APITestCase):
 
         self.assertTrue(User.objects.filter(username="zahra_auth_test").exists())
 
+        #### important: check if exactly two accounts were created for the new user
         user = User.objects.get(username="zahra_auth_test")
         self.assertEqual(Account.objects.filter(user=user).count(), 2)
 
