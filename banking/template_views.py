@@ -7,7 +7,7 @@ from django.views import View
 from django.contrib.auth.models import User
 from django.contrib import messages
 from .models import Account
-from decimal import Decimal
+# from decimal import Decimal
 
 class TemplateRegistrationView(View):
     """
@@ -54,24 +54,27 @@ class TemplateRegistrationView(View):
                 last_name=last_name
             )
             
-            # Create default Current Account
-            current_account = Account.objects.create(
-                name=f"{first_name or username}'s Current Account",
-                starting_balance=Decimal('1000.00'),
-                round_up_enabled=False,
-                user=user,
-                account_type='current'
-            )
+            # # Create default Current Account
+            # current_account = Account.objects.create(
+            #     name=f"{first_name or username}'s Current Account",
+            #     starting_balance=Decimal('1000.00'),
+            #     round_up_enabled=False,
+            #     user=user,
+            #     account_type='current'
+            # )
             
-            # Create default Savings Account
-            savings_account = Account.objects.create(
-                name=f"{first_name or username}'s Savings Account",
-                starting_balance=Decimal('0.00'),
-                round_up_enabled=True,
-                user=user,
-                account_type='savings'
-            )
-            
+            # # Create default Savings Account
+            # savings_account = Account.objects.create(
+            #     name=f"{first_name or username}'s Savings Account",
+            #     starting_balance=Decimal('0.00'),
+            #     round_up_enabled=True,
+            #     user=user,
+            #     account_type='savings'
+            # )
+
+            ### Important change: Get accounts created automatically by the signal
+            accounts = Account.objects.filter(user=user)
+
             # Success message
             messages.success(request, 'Registration successful! Two accounts created.')
             
@@ -80,21 +83,33 @@ class TemplateRegistrationView(View):
                 return JsonResponse({
                     'status': 'success',
                     'message': 'Registration successful',
+                    # 'accounts': [
+                    #     {
+                    #         'id': str(current_account.id),
+                    #         'name': current_account.name,
+                    #         'type': current_account.get_account_type_display(),
+                    #         'balance': str(current_account.starting_balance)
+                    #     },
+                    #     {
+                    #         'id': str(savings_account.id),
+                    #         'name': savings_account.name,
+                    #         'type': savings_account.get_account_type_display(),
+                    #         'balance': str(savings_account.starting_balance)
+                    #     }
+                    # ]
+
+                    ### Important change
                     'accounts': [
                         {
-                            'id': str(current_account.id),
-                            'name': current_account.name,
-                            'type': current_account.get_account_type_display(),
-                            'balance': str(current_account.starting_balance)
-                        },
-                        {
-                            'id': str(savings_account.id),
-                            'name': savings_account.name,
-                            'type': savings_account.get_account_type_display(),
-                            'balance': str(savings_account.starting_balance)
+                            'id': str(account.id),
+                            'name': account.name,
+                            'type': account.get_account_type_display(),
+                            'balance': str(account.starting_balance)
                         }
+                        for account in accounts
                     ]
                 })
+
             return redirect('login')  # Redirect to login page
             
         except Exception as e:
@@ -147,41 +162,53 @@ def register_api(request):
                 last_name=last_name
             )
             
-            # Create default Current Account
-            current_account = Account.objects.create(
-                name=f"{first_name or username}'s Current Account",
-                starting_balance=Decimal('1000.00'),
-                round_up_enabled=False,
-                user=user,
-                account_type='current'
-            )
+            # # Create default Current Account
+            # current_account = Account.objects.create(
+            #     name=f"{first_name or username}'s Current Account",
+            #     starting_balance=Decimal('1000.00'),
+            #     round_up_enabled=False,
+            #     user=user,
+            #     account_type='current'
+            # )
             
-            # Create default Savings Account
-            savings_account = Account.objects.create(
-                name=f"{first_name or username}'s Savings Account",
-                starting_balance=Decimal('0.00'),
-                round_up_enabled=True,
-                user=user,
-                account_type='savings'
-            )
+            # # Create default Savings Account
+            # savings_account = Account.objects.create(
+            #     name=f"{first_name or username}'s Savings Account",
+            #     starting_balance=Decimal('0.00'),
+            #     round_up_enabled=True,
+            #     user=user,
+            #     account_type='savings'
+            # )
             
+            # Again important change: Get accounts created automatically by the signal
+            accounts = Account.objects.filter(user=user)
+
             # Return success response
             return JsonResponse({
                 'message': 'User registered successfully',
                 'user_id': user.id,
+                # 'accounts': [
+                #     {
+                #         'id': str(current_account.id),
+                #         'name': current_account.name,
+                #         'type': current_account.get_account_type_display(),
+                #         'balance': str(current_account.starting_balance)
+                #     },
+                #     {
+                #         'id': str(savings_account.id),
+                #         'name': savings_account.name,
+                #         'type': savings_account.get_account_type_display(),
+                #         'balance': str(savings_account.starting_balance)
+                #     }
+                # ]
                 'accounts': [
                     {
-                        'id': str(current_account.id),
-                        'name': current_account.name,
-                        'type': current_account.get_account_type_display(),
-                        'balance': str(current_account.starting_balance)
-                    },
-                    {
-                        'id': str(savings_account.id),
-                        'name': savings_account.name,
-                        'type': savings_account.get_account_type_display(),
-                        'balance': str(savings_account.starting_balance)
+                        'id': str(account.id),
+                        'name': account.name,
+                        'type': account.get_account_type_display(),
+                        'balance': str(account.starting_balance)
                     }
+                    for account in accounts
                 ]
             }, status=201)
             
