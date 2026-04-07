@@ -35,6 +35,9 @@ class AuthTestCase(APITestCase):
 
         self.assertTrue(User.objects.filter(username="zahra_auth_test").exists())
 
+        user = User.objects.get(username="zahra_auth_test")
+        self.assertEqual(Account.objects.filter(user=user).count(), 2)
+
     def test_login_returns_access_and_refresh_for_valid_credentials(self):
         payload = {
             "username": "existinguser",
