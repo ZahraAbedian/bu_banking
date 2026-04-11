@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
 from django.db import transaction
 from django.db import models
@@ -169,6 +170,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
     
     def perform_create(self, serializer):
+        from_account = serializer.validated_data.get('from_account')
+
+        # compare account owner to user making request
+        if from_account.user != self.request.user:
+            raise PermissionDenied('Access Denied.')
+
         # wrap function with atomic block, one part fails all fails
         with transaction.atomic():
             instance = serializer.save()
