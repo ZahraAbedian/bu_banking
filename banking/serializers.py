@@ -37,6 +37,11 @@ class TransactionSerializer(serializers.ModelSerializer):
         from_account = attrs.get('from_account')
         to_account = attrs.get('to_account')
         business = attrs.get('business')
+        amount = attrs.get('amount')
+
+        if from_account and amount:
+            if from_account.starting_balance < amount:
+                raise serializers.ValidationError({'amount': f"Insufficient funds. Available Balance: {from_account.starting_balance}"})
 
         if transaction_type == 'transfer':
             if not to_account:
