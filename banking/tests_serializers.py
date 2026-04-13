@@ -65,3 +65,14 @@ class TransactionSerializerTest(TestCase):
         serializer = TransactionSerializer(data=data)
         self.assertFalse(serializer.is_valid())
         self.assertIn('business', serializer.errors)
+
+    def test_insufficient_funds_fail(self):
+        data = {
+            'transaction_type': 'payment',
+            'amount': Decimal('2000.00'),
+            'from_account': self.account1.id,
+            'business': self.business.id
+        }
+        serializer = TransactionSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('amount', serializer.errors)

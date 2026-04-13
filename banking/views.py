@@ -2,7 +2,9 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.decorators import action
+from django.db import transaction
 from django.db import models
 from django.db.models import Sum
 from django.contrib.auth.models import User
@@ -168,21 +170,26 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated()]
     
     def perform_create(self, serializer):
-        # When creating a transaction, validate that the user owns the from_account
-        from_account_id = self.request.data.get('from_account')
-        
-        try:
-            from_account = Account.objects.get(id=from_account_id)
-            
-            # Check if the user is authorized for this account
-            if from_account.user != self.request.user and not self.request.user.is_staff:
-                raise PermissionError("You don't have permission to create transactions for this account")
-                
-            serializer.save()
-        except Account.DoesNotExist:
-            raise ValueError("Account not found")
-        except PermissionError as e:
-            raise PermissionError(str(e))
+        from_account = serializer.validated_data.get('from_account')
+
+        # compare account owner to user making request
+        if from_account.user != self.request.user:
+            raise PermissionDenied('Access Denied.')
+
+        # wrap function with atomic block, one part fails all fails
+        with transaction.atomic():
+            instance = serializer.save()
+
+            # get sender account and subtract amount sent
+            from_account = instance.from_account
+            from_account.starting_balance -= instance.amount
+            from_account.save()
+
+            # if its a transfer, add money to recepient
+            if instance.transaction_type == 'transfer' and instance.to_account:
+                to_account = instance.to_account
+                to_account.starting_balance += instance.amount
+                to_account.save()
 
     @action(detail=False, methods=['get'], url_path='account/(?P<account_id>[^/.]+)')
     def account_transactions(self, request, account_id=None):

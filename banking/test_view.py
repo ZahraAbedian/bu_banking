@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny
+from decimal import Decimal
 
 class TestView(APIView):
     """
@@ -85,3 +86,25 @@ class TransactionAPITest(APITestCase):
         response = self.client.post(self.url, payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('to_account', response.data)
+
+    # test 3: ensure transfer amount is removed from sender account
+    def test_create_transfer_funds_removed_from_account(self):
+        original_balance = self.account1.starting_balance
+        transfer_amount = Decimal('50.00')
+        
+        payload = {
+            'transaction_type': 'transfer',
+            'amount': str(transfer_amount),
+            'from_account': str(self.account1.id),
+            'to_account': str(self.account2.id),
+        }
+
+        response = self.client.post(self.url, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        self.account1.refresh_from_db()
+        self.account2.refresh_from_db()
+
+        self.assertEqual(self.account1.starting_balance, original_balance - transfer_amount)
+        self.assertEqual(self.account2.starting_balance, Decimal(500.00) + transfer_amount)
+
