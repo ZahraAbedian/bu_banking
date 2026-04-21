@@ -272,31 +272,31 @@ class TransactionViewSet(viewsets.ModelViewSet):
         return Response({"savings": True})
 
     @action(detail=False, methods=['get'], url_path='monthly-insights')
-def monthly_insights(self, request):
-    """
-    Return user-level monthly spending insights across the authenticated user's accounts.
-    Optional query params:
-    - month
-    - year
-    Example:
-    /api/transactions/monthly-insights/?month=4&year=2026
-    """
-    month = request.query_params.get('month')
-    year = request.query_params.get('year')
-    try:
-        month = int(month) if month else None
-        year = int(year) if year else None
-    except ValueError:
-        return Response(
-            {"detail": "month and year must be valid integers"},
-            status=status.HTTP_400_BAD_REQUEST
+    def monthly_insights(self, request):
+        """
+        Return user-level monthly spending insights across the authenticated user's accounts.
+        Optional query params:
+        - month
+        - year
+        Example:
+        /api/transactions/monthly-insights/?month=4&year=2026
+        """
+        month = request.query_params.get('month')
+        year = request.query_params.get('year')
+        try:
+            month = int(month) if month else None
+            year = int(year) if year else None
+        except ValueError:
+            return Response(
+                {"detail": "month and year must be valid integers"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        data = get_monthly_spending_insights(
+            user=request.user,
+            month=month,
+            year=year
         )
-    data = get_monthly_spending_insights(
-        user=request.user,
-        month=month,
-        year=year
-    )
-    return Response(data, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_200_OK)
 
 class BusinessViewSet(viewsets.ModelViewSet):
     queryset = Business.objects.all()
