@@ -11,6 +11,7 @@ from django.contrib.auth.models import User
 from .models import Account, Transaction, Business
 from .serializers import AccountSerializer, TransactionSerializer, BusinessSerializer
 from decimal import Decimal
+from banking.services.spending_insights import get_monthly_spending_insights
 import os
 import subprocess
 
@@ -124,6 +125,9 @@ class AccountViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         # For list and retrieve actions, require authentication
         if self.action in ['list', 'retrieve', 'my_accounts', 'roundups', 'spending_trends', 'current_balance']:
+            return [IsAuthenticated()]
+        # For read actions, require authentication
+        if self.action in ['list', 'retrieve', 'account_transactions', 'spending_summary', 'monthly_insights']:
             return [IsAuthenticated()]
         # For create, update, delete actions, require admin privileges
         elif self.action in ['create', 'update', 'partial_update', 'destroy', 'manager_list']:
