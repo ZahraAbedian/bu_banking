@@ -211,8 +211,8 @@ def get_monthly_spending_insights(user, month: int | None = None, year: int | No
     try:
         summary["insights"] = generate_ai_insights(summary)
         summary["insight_source"] = "llm"
-    except Exception as e:
+    except Exception:
         summary["insights"] = generate_fallback_insights(summary)
-        summary["insight_source"] = f"fallback: {str(e)}"
+        summary["insight_source"] = "fallback"
 
     return summary
