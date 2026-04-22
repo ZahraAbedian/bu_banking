@@ -108,3 +108,35 @@ class TransactionAPITest(APITestCase):
         self.assertEqual(self.account1.starting_balance, original_balance - transfer_amount)
         self.assertEqual(self.account2.starting_balance, Decimal(500.00) + transfer_amount)
 
+    # test 4: monthly insights returns summary data
+    def test_monthly_insights_returns_summary_data(self):
+        # create a business for categorised spending
+        business = Business.objects.create(
+            id="coffee_shop_test",
+            name="Coffee Shop",
+            category="food",
+            sanctioned=False
+        )
+
+        # create a payment transaction for the authenticated user's account
+        self.client.post(
+        self.url,
+            {
+                "transaction_type": "payment",
+                "amount": "25.00",
+                "from_account": str(self.account1.id),
+                "business": business.id,
+            },
+            format="json"
+        )
+
+        response = self.client.get("/api/transactions/monthly-insights/", format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("month", response.data)
+        self.assertIn("total_spent", response.data)
+        self.assertIn("categories", response.data)
+        self.assertIn("transaction_count", response.data)
+        self.assertIn("insights", response.data)
+        self.assertEqual(response.data["total_spent"], "25.00")
+        self.assertEqual(response.data["transaction_count"], 1)
