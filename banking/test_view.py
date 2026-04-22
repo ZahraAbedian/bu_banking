@@ -140,3 +140,4 @@ class TransactionAPITest(APITestCase):
         self.assertIn("insights", response.data)
         self.assertEqual(response.data["total_spent"], "25.00")
         self.assertEqual(response.data["transaction_count"], 1)
+        self.assertIn("percentage", response.data["categories"][0])
