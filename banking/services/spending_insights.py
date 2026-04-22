@@ -4,6 +4,8 @@ from django.utils import timezone
 
 from banking.models import Account, Transaction
 
+from openai import OpenAI
+
 
 CATEGORY_MAP = {
     "food": "Food & Drink",
@@ -38,7 +40,7 @@ CATEGORY_MAP = {
 def categorize_transaction(transaction: Transaction) -> str:
     """
     Assign a spending category to a transaction.
-    First version uses simple rule-based categorisation.
+    It uses simple rule-based categorisation.
     """
     transaction_type = transaction.transaction_type
 
@@ -99,7 +101,7 @@ def get_user_transactions_for_month(user, month: int | None = None, year: int | 
 def monthly_spending_summary(user, month: int | None = None, year: int | None = None) -> dict:
     """
     Build a monthly spending summary grouped by category.
-    This first version treats payment and withdrawal as 'spending'.
+    TIt treats payment and withdrawal as 'spending'.
     """
     transactions = get_user_transactions_for_month(user=user, month=month, year=year)
 
@@ -151,11 +153,7 @@ def monthly_spending_summary(user, month: int | None = None, year: int | None = 
     }
 
 
-def generate_insights(summary_data: dict) -> list[str]:
-    """
-    Generate simple human-readable insight messages from the monthly summary.
-    First version is rule-based text generation.
-    """
+def generate_fallback_insights(summary_data: dict) -> list[str]:
     insights = []
     categories = summary_data.get("categories", [])
     total_spent = Decimal(summary_data.get("total_spent", "0.00"))
@@ -164,37 +162,57 @@ def generate_insights(summary_data: dict) -> list[str]:
         return ["No spending activity found for this month yet."]
 
     if categories:
-        top_category = categories[0]
         insights.append(
-            f"Your highest spending category this month is {top_category['category']}."
+            f"Your highest spending category this month is {categories[0]['category']}."
         )
 
     if len(categories) > 1:
-        second_category = categories[1]
         insights.append(
-            f"Your second highest spending category is {second_category['category']}."
+            f"Your second highest spending category is {categories[1]['category']}."
         )
 
-    if total_spent > Decimal("500.00"):
-        insights.append(
-            "Your spending this month is relatively high compared with a typical light-spending month."
-        )
-    elif total_spent < Decimal("100.00"):
-        insights.append(
-            "Your spending this month is currently quite low."
-        )
+    return insights or ["Your spending is balanced this month."]
 
-    if not insights:
-        insights.append("Your spending looks fairly balanced this month.")
 
-    return insights
+def generate_ai_insights(summary_data: dict) -> list[str]:
+    client = OpenAI()
+
+    prompt = f"""
+You are a helpful personal finance assistant.
+Given this monthly spending summary, generate 2 to 4 short, practical insights.
+Keep them clear, friendly, and specific.
+Do not mention that you are an AI.
+Do not give investment advice.
+Focus on spending patterns, biggest categories, concentration of spending, and simple budgeting observations.
+
+Summary data:
+{summary_data}
+"""
+
+    response = client.responses.create(
+        model="gpt-5.4-mini",
+        input=prompt
+    )
+
+    text = response.output_text.strip()
+
+    lines = [
+        line.strip("-• ").strip()
+        for line in text.splitlines()
+        if line.strip()
+    ]
+
+    return lines[:4] if lines else generate_fallback_insights(summary_data)
 
 
 def get_monthly_spending_insights(user, month: int | None = None, year: int | None = None) -> dict:
-    """
-    Main function to return spending summary + generated insights.
-    """
     summary = monthly_spending_summary(user=user, month=month, year=year)
-    summary["insights"] = generate_insights(summary)
-    return summary
 
+    try:
+        summary["insights"] = generate_ai_insights(summary)
+        summary["insight_source"] = "llm"
+    except Exception:
+        summary["insights"] = generate_fallback_insights(summary)
+        summary["insight_source"] = "fallback"
+
+    return summary
