@@ -274,12 +274,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='monthly-insights')
     def monthly_insights(self, request):
         """
-        Return user-level monthly spending insights across the authenticated user's accounts.
-        Optional query params:
-        - month
-        - year
-        Example:
-        /api/transactions/monthly-insights/?month=4&year=2026
+        Return monthly spending insights for the authenticated user across their accounts.
+        Includes total spending, category breakdown, transaction count, and AI-generated insight messages.
+        Falls back to rule-based insights if the AI service is unavailable.
         """
         month = request.query_params.get('month')
         year = request.query_params.get('year')
