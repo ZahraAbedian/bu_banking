@@ -118,17 +118,23 @@ def monthly_spending_summary(user, month: int | None = None, year: int | None = 
         category_totals[category] += amount
         total_spent += amount
 
-    categories = [
-        {
+    sorted_categories = sorted(
+        category_totals.items(),
+        key=lambda item: item[1],
+        reverse=True
+    )
+
+    categories = []
+    for category, total in sorted_categories:
+        percentage = Decimal("0.00")
+        if total_spent > Decimal("0.00"):
+            percentage = (total / total_spent) * Decimal("100")
+
+        categories.append({
             "category": category,
-            "total": str(total)
-        }
-        for category, total in sorted(
-            category_totals.items(),
-            key=lambda item: item[1],
-            reverse=True
-        )
-    ]
+            "total": str(total),
+            "percentage": f"{percentage:.2f}"
+        })
 
     if month is None or year is None:
         now = timezone.now()
