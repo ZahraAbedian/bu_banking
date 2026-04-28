@@ -63,8 +63,8 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(str(e)))
 
             except Exception as e:
-                self.stdout.write(
-                    self.style.ERROR(f"Unexpected polling error: {e}")
-                )
+                import traceback
+                self.stdout.write(self.style.ERROR(f"Unexpected polling error: {e}"))
+                traceback.print_exc()
 
             time.sleep(interval)
