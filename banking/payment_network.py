@@ -20,7 +20,7 @@ def get_pending_queue():
     # call the api to get the pending queue
     
     url = f"{settings.PAYMENT_NETWORK_BASE_URL}/api/queue/pending"
-    response = requests.get(url, headers=_headers(), timeout=20)
+    response = requests.get(url, headers=_headers(), timeout=10)
 
     if response.status_code >= 400:
         raise PaymentNetworkError(f"failed to fetch pending queue: {response.status_code} - {response.text}")
@@ -36,7 +36,7 @@ def respond_to_authorization(item_id, approve, response_code):
         "approve": approve,
         "response_code": response_code,
     }
-    response = requests.post(url, json=payload, headers=_headers(), timeout=20)
+    response = requests.post(url, json=payload, headers=_headers(), timeout=10)
 
     if response.status_code >= 400:
         raise PaymentNetworkError(
@@ -50,7 +50,7 @@ def acknowledge_queue_item(item_id):
     # call the api to acknowledge the queue item
     
     url = f"{settings.PAYMENT_NETWORK_BASE_URL}/api/queue/ack/{item_id}"
-    response = requests.post(url, headers=_headers(), timeout=20)
+    response = requests.post(url, headers=_headers(), timeout=10)
 
     if response.status_code >= 400:
         raise PaymentNetworkError(
