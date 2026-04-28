@@ -2,7 +2,7 @@ from django.contrib import admin
 
 # Register your models here.
 
-from .models import Account, Business, Product, Transaction, Card
+from .models import Account, Business, Transaction, Card
 
 admin.site.register(Account)
 admin.site.register(Business)
