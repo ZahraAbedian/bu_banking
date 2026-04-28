@@ -142,3 +142,23 @@ REST_FRAMEWORK = {
 
 CORS_ALLOW_ALL_ORIGINS = True  # For development only, don't use in production
 CORS_ALLOW_CREDENTIALS = True
+
+
+
+import os
+
+PAYMENT_NETWORK_BASE_URL = os.getenv(
+    "PAYMENT_NETWORK_BASE_URL",
+     "https://paymentsystem-cf.pages.dev"
+)
+
+PAYMENT_BANK_ID = os.getenv(
+    "PAYMENT_BANK_ID",
+    ""
+)
+
+PAYMENT_API_KEY =  os.getenv(
+    "PAYMENT_API_KEY",
+    ""
+)
+
