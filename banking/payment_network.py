@@ -11,7 +11,7 @@ def _headers():
         raise PaymentNetworkError("PAYMENT_API_KEY is not configured")
 
     return {
-        "X-API-Key": settings.PAYMENT_API_Key,
+        "X-API-Key": settings.PAYMENT_API_KEY,
         "Content-Type": "application/json",
     }
 
