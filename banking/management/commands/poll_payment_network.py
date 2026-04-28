@@ -46,6 +46,7 @@ class Command(BaseCommand):
 
                     if item_type == "authorize_request":
                         handle_authorize_request(item)
+                        acknowledge_queue_item(item_id)
 
                     elif item_type == "transaction_update":
                         acknowledge_queue_item(item_id)
