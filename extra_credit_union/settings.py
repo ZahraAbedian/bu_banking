@@ -149,7 +149,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 PAYMENT_NETWORK_BASE_URL = os.getenv(
     "PAYMENT_NETWORK_BASE_URL",
-     "https://paymentsystem-cf.pages.dev"
+     "https://paymentsystem-cards-cf.pages.dev"
 )
 
 PAYMENT_BANK_ID = os.getenv(
