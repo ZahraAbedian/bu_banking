@@ -320,7 +320,7 @@ def record_nfc_payment(request):
     timestamp = data.get("timestamp")
     
     try:
-        amount = Decimal(data.get("amount"))
+        amount = Decimal(str(data.get("amount"))).quantize(Decimal('0.01'))
     except InvalidOperation:
         return Response({"detail": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -361,7 +361,7 @@ def record_nfc_payment(request):
             "message": "NFC payment recorded successfully",
             "transaction_id": local_transaction.id,
             "card_number": card_number,
-            "new_balance": str(account.starting_balance),
+            "new_balance": str(account.starting_balance.quantize(Decimal('0.01'))),
         },
         status=status.HTTP_201_CREATED,
     )
