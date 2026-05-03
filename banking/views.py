@@ -8,9 +8,9 @@ from django.db import transaction
 from django.db import models
 from django.db.models import Sum
 from django.contrib.auth.models import User
-from .models import Account, Transaction, Business
+from .models import Account, Transaction, Business, Card
 from .serializers import AccountSerializer, TransactionSerializer, BusinessSerializer
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from banking.services.spending_insights import get_monthly_spending_insights
 import os
 import subprocess
@@ -305,3 +305,58 @@ class BusinessViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated()]
         # For write operations, require admin privileges
         return [IsAdminUser()]
+
+
+@api_view(["POST"])
+def record_nfc_payment(request): 
+    """
+    Record a new NFC payment.
+    """
+    data = request.data
+    card_number = data.get("card_number")
+    merchant_id = data.get("merchant_id")
+    trnsaction_id = data.get("transaction_id")
+    timestamp = data.get("timestamp")
+    
+    try:
+        amount = Decimal(data.get("amount"))
+    except InvalidOperation:
+        return Response({"detail": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
+
+    if amount <= 0:
+        return Response({"detail": "Amount must be greater than zero"}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try: 
+        card = Card.objects.select_related('account').get(card_number=card_number, active=True)
+    except Card.DoesNotExist:
+        return Response({"error": "Card not found or inactive."}, status=status.HTTP_404_NOT_FOUND)
+    
+    with transaction.atomic():
+        # update account balance
+        account.starting_balance -= amount
+        account.save()
+
+        business, _ = Business.objects.get_or_create(
+            id = merchant_id ,
+            defaults={
+                "name": merchant_id,
+                "category": "NFC payment",
+                "sanctioned": False,},)
+
+        local_transaction = Transaction.objects.create(
+            transaction_type = "payment",
+            from_account = card.account,
+            amount = amount,
+            business=business,      
+        )
+
+
+    return Response(
+        {
+            "message": "NFC payment recorded successfully",
+            "transaction_id": local_transaction.id,
+            "card_number": card_number,
+            "new_balance": str(account.starting_balance),
+        },
+        status=status.HTTP_201_CREATED,
+    )
