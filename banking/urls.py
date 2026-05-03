@@ -57,7 +57,6 @@ urlpatterns += [
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]
 
-
 # These insecure endpoints are kept from the original file
 from django.http import JsonResponse
 import subprocess

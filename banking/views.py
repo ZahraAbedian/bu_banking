@@ -50,24 +50,6 @@ class UserRegistrationView(APIView):
                 last_name=last_name
             )
             
-            # # Create default Current Account with 1000 starting balance
-            # current_account = Account.objects.create(
-            #     name=f"{first_name or username}'s Current Account",
-            #     starting_balance=Decimal('1000.00'),
-            #     round_up_enabled=False,
-            #     user=user,
-            #     account_type='current'
-            # )
-            
-            # # Create default Savings Account with 0 starting balance
-            # savings_account = Account.objects.create(
-            #     name=f"{first_name or username}'s Savings Account",
-            #     starting_balance=Decimal('0.00'),
-            #     round_up_enabled=True,  # Enable round-up for savings by default
-            #     user=user,
-            #     account_type='savings'
-            # )
-
             ### Important change: Get accounts created automatically by the signal
             accounts = Account.objects.filter(user=user)
             
@@ -75,22 +57,6 @@ class UserRegistrationView(APIView):
             return Response({
                 "message": "User registered successfully",
                 "user_id": user.id,
-                # "accounts": [
-                #     {
-                #         "id": str(current_account.id),
-                #         "name": current_account.name,
-                #         "type": current_account.get_account_type_display(),
-                #         "balance": str(current_account.starting_balance)
-                #     },
-                #     {
-                #         "id": str(savings_account.id),
-                #         "name": savings_account.name,
-                #         "type": savings_account.get_account_type_display(),
-                #         "balance": str(savings_account.starting_balance)
-                #     }
-                # ]
-
-                ### Important change
                 'accounts': [
                     {
                         'id': str(account.id),
