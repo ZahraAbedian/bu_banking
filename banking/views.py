@@ -12,6 +12,7 @@ from .models import Account, Transaction, Business, Card
 from .serializers import AccountSerializer, TransactionSerializer, BusinessSerializer
 from decimal import Decimal, InvalidOperation
 from banking.services.spending_insights import get_monthly_spending_insights
+from rest_framework.decorators import api_view
 import os
 import subprocess
 
