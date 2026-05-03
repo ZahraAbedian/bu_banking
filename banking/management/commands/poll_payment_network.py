@@ -7,7 +7,7 @@ from banking.payment_network import (
     acknowledge_queue_item,
     PaymentNetworkError,
 )
-from banking.payment_handlers import handle_authorize_request
+from banking.payment_handlers import handle_authorize_request, handle_transaction_update
 
 
 class Command(BaseCommand):
@@ -41,7 +41,10 @@ class Command(BaseCommand):
                 for item in items:
                     item_id = item.get("id")
                     item_type = item.get("item_type")
+                    payload = item.get("payload", {})
+                    card_number = payload.get("card_number")
 
+                    self.stdout.write(f"FULL ITEM: {item}")
                     self.stdout.write(f"Processing item {item_id}: {item_type}")
 
                     if item_type == "authorize_request":
@@ -49,6 +52,7 @@ class Command(BaseCommand):
                         acknowledge_queue_item(item_id)
 
                     elif item_type == "transaction_update":
+                        handle_transaction_update(item)
                         acknowledge_queue_item(item_id)
 
                     else:
