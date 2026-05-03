@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from .views import AccountViewSet, TransactionViewSet, BusinessViewSet, UserRegistrationView, record_nfc_payment
 from .test_view import TestView
+from .views import record_nfc_payment
 import logging
 import traceback
 
@@ -31,7 +32,7 @@ urlpatterns = [
     # Test routing with very simple views
     path('simple-register/', SimpleRegisterView.as_view(), name='simple-registration'),
     path('test-view/', TestView.as_view(), name='banking-test-view'),
-    path("nfc/recordpayment/", record_nfc_payment, name="record_nfc_payment"),
+    path("nfc/record-payment/", record_nfc_payment, name="record_nfc_payment"),
 ]
 
 #TASK1 Add swagger
