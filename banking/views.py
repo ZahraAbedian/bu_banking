@@ -332,6 +332,10 @@ def record_nfc_payment(request):
     except Card.DoesNotExist:
         return Response({"error": "Card not found or inactive."}, status=status.HTTP_404_NOT_FOUND)
     
+    account = card.account
+    if account.starting_balance < amount:
+        return Response({"error": "Insufficient funds."}, status=status.HTTP_400_BAD_REQUEST)
+
     with transaction.atomic():
         # update account balance
         account.starting_balance -= amount
