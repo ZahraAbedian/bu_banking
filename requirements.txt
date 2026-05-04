@@ -6,3 +6,4 @@ django-rest-swagger
 django-cors-headers
 requests
 python-dotenv
+openai
