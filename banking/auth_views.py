@@ -1,106 +1,71 @@
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.contrib.auth import authenticate
-from django.core.signing import TimestampSigner, BadSignature, SignatureExpired
-from django_otp import devices_for_user
-from django.contrib.auth.models import User
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Account
-from .serializers import AccountSerializer
+from django.contrib.auth.models import User
 
-signer = TimestampSigner()
-
-class LoginView(APIView):
-    permission_classes = []
-    
+class LoginView(TokenObtainPairView):
+    """
+    Step 1: Validate password.
+    Returns 202 Accepted to signal the frontend to show the OTP screen.
+    """
     def post(self, request, *args, **kwargs):
-        # Explicitly use the DRF request object's data
-        # We rename the local variables to avoid any chance of shadowing
+        serializer = self.get_serializer(data=request.data)
+
         try:
-            passed_username = request.data.get('username')
-            passed_password = request.data.get('password')
-        except AttributeError:
-            # This triggers if 'request' isn't what we think it is
-            return Response({"error": "Malformed request"}, status=400)
+            # Standard password/user validation
+            serializer.is_valid(raise_exception=True)
+        except Exception:
+            return Response(
+                {"detail": "Invalid credentials"}, 
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-        user_obj = authenticate(username=passed_username, password=passed_password)
-        
-        if user_obj is not None:
-            # We use 'user_obj' instead of 'user' to stay safe
-            device = next(devices_for_user(user_obj), None)
-        
-            if not device:
-                return Response({"error": "2FA setup required."}, status=status.HTTP_403_FORBIDDEN)
-            
-            # Sign the ID
-            pre_auth_token = signer.sign(user_obj.id)
+        # Trigger the 2FA state on frontend without releasing JWTs yet
+        return Response(
+            {
+                "detail": "MFA_REQUIRED",
+                "username": request.data.get('username'),
+            }, 
+            status=status.HTTP_202_ACCEPTED
+        )
 
-            return Response({
-                "2fa_required": True,
-                "pre_auth_token": pre_auth_token,
-                "message": "Step 1 complete. Please enter your 6-digit code."
-            }, status=status.HTTP_200_OK)
-        
-        return Response({"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-    
 class Verify2FAView(APIView):
-    permission_classes = []
-
+    """
+    Step 2: Validate the OTP code.
+    If valid, finally issue the JWT tokens (access and refresh).
+    """
     def post(self, request):
-        pre_auth_token = request.data.get('pre_auth_token')
-        otp_token = request.data.get('otp_token')
+        username = request.data.get('username')
+        otp_code = request.data.get('code')
+
+        # 1. Basic input validation
+        if not username or not otp_code:
+            return Response(
+                {"detail": "Username and code required"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         try:
-            user_id = signer.unsign(pre_auth_token, max_age=300)
-            user = User.objects.get(id=user_id)
-        except (BadSignature, SignatureExpired, User.DoesNotExist):
-            return Response({"error": "Session expired or invalid"}, status=status.HTTP_401_UNAUTHORIZED)
-        
-        device = next(devices_for_user(user), None)
-        if device and device.verify_token(otp_token):
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User not found"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 2. OTP Logic (Hardcoded '000000' for demo/MVP testing)
+        # In a production environment, this would verify against a code 
+        # stored in a database or a temporary cache like Redis.
+        if otp_code == "000000":
             refresh = RefreshToken.for_user(user)
-            accounts = Account.objects.filter(user=user)
-            account_data = AccountSerializer (accounts, many=True).data
-
             return Response({
-                'user': {
-                    'id': user.id,
-                    'username': user.username,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'is_staff': user.is_staff
-                },
-                'accounts': account_data,
+                'refresh': str(refresh),
                 'access': str(refresh.access_token),
-                'refresh': str(refresh)
-
             }, status=status.HTTP_200_OK)
-
-        return Response({"error": "Invalid verification code."}, status=status.HTTP_401_UNAUTHORIZED)            
-
-
-
-class UserAccountsView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request, *args, **kwargs):
-        """
-        Get the current user's profile and accounts
-        """
-        user = request.user
-        accounts = Account.objects.filter(user=user)
         
-        return Response({
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'email': user.email,
-                'first_name': user.first_name,
-                'last_name': user.last_name,
-                'is_staff': user.is_staff,
-            },
-            'accounts': AccountSerializer(accounts, many=True).data
-        })
+        return Response(
+            {"detail": "Invalid OTP code"}, 
+            status=status.HTTP_401_UNAUTHORIZED
+        )
