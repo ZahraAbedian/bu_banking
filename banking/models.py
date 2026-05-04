@@ -52,3 +52,18 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type} - {self.amount}"
+
+
+class Card(models.Model):
+    account = models.ForeignKey(
+        Account,
+        on_delete=models.CASCADE,
+        related_name="cards"
+    )
+
+    card_number = models.CharField(max_length=16, unique=True)
+    active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Card ending {self.card_number[-4:]}"
+

@@ -1,9 +1,7 @@
 from collections import defaultdict
 from decimal import Decimal
 from django.utils import timezone
-
 from banking.models import Account, Transaction
-
 from openai import OpenAI
 
 
