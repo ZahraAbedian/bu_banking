@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     #TASK1 Add swagger
     'rest_framework_swagger',
     'drf_yasg',
-    'corsheaders',
+    'corsheaders'
     #ENDTASK1
 
 ]
@@ -147,7 +147,8 @@ REST_FRAMEWORK = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
-    "http://127.0.0.1:3000"
+    "http://127.0.0.1:3000",
+    "http://localhost:5173"
 ]
 
 
@@ -165,3 +166,11 @@ PAYMENT_API_KEY =  os.getenv(
     "PAYMENT_API_KEY"
 )
 
+# Add this to handle CSRF for local development
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Ensure CORS allows the React headers
+CORS_ALLOW_CREDENTIALS = True

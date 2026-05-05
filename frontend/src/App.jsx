@@ -4,62 +4,63 @@ import logo from "./assets/logo.png";
 
 function App() {
   const [animateIn, setAnimateIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  
+  // Flow and Data State
+  const [isMfaRequired, setIsMfaRequired] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState("home");
-  const [error, setError] = useState(""); // 2. Keep red error state
+  const [userProfile, setUserProfile] = useState(null);
+  const [accounts, setAccounts] = useState([]);
+  
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const inputRefs = useRef([]);
 
+  // Initial animation trigger
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setAnimateIn(true);
-    }, 150);
-
+    const timer = setTimeout(() => setAnimateIn(true), 150);
     return () => clearTimeout(timer);
   }, []);
 
+  // Auto-focus the first OTP box when MFA is triggered[cite: 2]
   useEffect(() => {
-    if (animateIn && !isLoggedIn) {
-      const focusTimer = setTimeout(() => {
-        inputRefs.current[0]?.focus();
-      }, 1500);
-
-      return () => clearTimeout(focusTimer);
+    if (isMfaRequired && inputRefs.current[0]) {
+      inputRefs.current[0].focus();
     }
-  }, [animateIn, isLoggedIn]);
+  }, [isMfaRequired]);
 
-  // 1. Incorporate Backend Support
-  useEffect(() => {
-    if (pin.every((digit) => digit !== "")) {
-      const passcode = pin.join("");
-      
-      fetch("http://localhost:8000/api/login/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          username: "joshua", 
-          password: passcode 
-        }),
-      })
-      .then(async (res) => {
-        const data = await res.json();
-        if (res.ok) {
-          localStorage.setItem("userData", JSON.stringify(data.user));
-          localStorage.setItem("accountData", JSON.stringify(data.accounts));
-          setIsLoggedIn(true);
-        } else {
-          setError(data.error || "Invalid passcode"); // 2. Red error message
-          setPin(["", "", "", "", "", ""]);
-          setActiveIndex(0);
-          inputRefs.current[0]?.focus();
-        }
-      })
-      .catch(() => setError("Unable to connect to server"));
+  // STEP 1: Handle Initial Password Check[cite: 2]
+  const handleInitialLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await response.json();
+
+      if (response.status === 202) {
+        // Credential check passed, transition to MFA PIN screen[cite: 2]
+        setIsMfaRequired(true);
+      } else {
+        setError(data.detail || 'Invalid username or password');
+      }
+    } catch (err) {
+      setError('Connection to Zenith failed');
+    } finally {
+      setLoading(false);
     }
-  }, [pin]);
+  };
 
-  const handleChange = (value, index) => {
+  // OTP Input Logic: Handles auto-tab and triggering verification[cite: 2]
+  const handlePinChange = (value, index) => {
     const digit = value.replace(/\D/g, "").slice(-1);
     if (!digit) return;
 
@@ -70,274 +71,151 @@ function App() {
     if (index < 5) {
       inputRefs.current[index + 1]?.focus();
       setActiveIndex(index + 1);
+    } else {
+      // 6th digit entered: Trigger Backend TOTP check[cite: 2]
+      verifyMFA(newPin.join(''));
     }
   };
 
-  const handleKeyDown = (e, index) => {
-    if (e.key === "Backspace") {
-      e.preventDefault();
-      const newPin = [...pin];
+  // STEP 2: Verify TOTP from Google Authenticator[cite: 2]
+  const verifyMFA = async (code) => {
+    setLoading(true);
+    setError('');
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/auth/verify-2fa/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, code }), 
+      });
+      const data = await response.json();
 
-      if (newPin[index]) {
-        newPin[index] = "";
-        setPin(newPin);
-        setActiveIndex(index);
-      } else if (index > 0) {
-        newPin[index - 1] = "";
-        setPin(newPin);
-        inputRefs.current[index - 1]?.focus();
-        setActiveIndex(index - 1);
+      if (response.ok) {
+        // Auth success: Save session data and show transition[cite: 2, 3]
+        localStorage.setItem('access', data.access);
+        setUserProfile(data.user);
+        setAccounts(data.accounts);
+
+        setIsVerifying(true); 
+        setTimeout(() => {
+          setIsLoggedIn(true);
+          setIsVerifying(false);
+        }, 2200);
+      } else {
+        // Reset PIN on failure[cite: 2]
+        setError(data.detail || 'Invalid Authenticator Code');
+        setPin(["", "", "", "", "", ""]);
+        setActiveIndex(0);
+        inputRefs.current[0]?.focus();
       }
-    }
-
-    if (e.key === "ArrowLeft" && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-      setActiveIndex(index - 1);
-    }
-
-    if (e.key === "ArrowRight" && index < 5) {
-      inputRefs.current[index + 1]?.focus();
-      setActiveIndex(index + 1);
+    } catch (err) {
+      setError('Verification connection error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleFocus = (index) => {
-    setActiveIndex(index);
-  };
-
-  const navItems = [
-    { key: "payments", label: "Payments", icon: "⇄" },
-    { key: "spending", label: "Spending", icon: "◔" },
-    { key: "home", label: "Home", icon: "⌂" },
-    { key: "cards", label: "Cards", icon: "◫" },
-    { key: "investments", label: "Invest", icon: "↗" },
-  ];
-
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "payments":
-        return (
-          <div className="placeholder-screen">
-            <h2>Payments</h2>
-            <p>Send money, schedule transfers, and manage payees.</p>
-          </div>
-        );
-      case "spending":
-        return (
-          <div className="placeholder-screen">
-            <h2>Spending</h2>
-            <p>Track categories, subscriptions, and monthly trends.</p>
-          </div>
-        );
-      case "cards":
-        return (
-          <div className="placeholder-screen">
-            <h2>Cards</h2>
-            <p>Freeze cards, reveal details, and manage card controls.</p>
-          </div>
-        );
-      case "investments":
-        return (
-          <div className="placeholder-screen">
-            <h2>Investments</h2>
-            <p>View portfolio performance, holdings, and market changes.</p>
-          </div>
-        );
-      default:
-        return <HomeDashboard />;
-    }
-  };
-
-  if (isLoggedIn) {
-    return (
-      <div className="dashboard-screen">
-        <div className="dashboard-content">
-          {renderTabContent()}
-        </div>
-
-        <nav className="bottom-nav">
-          {navItems.map((item) => (
-            <button
-              key={item.key}
-              className={`nav-item ${activeTab === item.key ? "active-nav" : ""}`}
-              onClick={() => setActiveTab(item.key)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <span className="nav-label">{item.label}</span>
-            </button>
-          ))}
-        </nav>
+  // Dashboard View: Displays real account data from your API[cite: 2]
+  if (isLoggedIn) return <HomeDashboard user={userProfile} accounts={accounts} />;
+  
+  // Transition View: Pulse animation while session establishes[cite: 3]
+  if (isVerifying) return (
+    <div className="app-screen">
+      <div className="verifying-container">
+        <img src={logo} alt="Zenith" className="pulse-logo" />
+        <p className="verifying-text">Securing your session...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="app-screen">
-      <button className="help-button" aria-label="Help">
-        ?
-      </button>
-
-      <div className={`logo-stage ${animateIn ? "logo-stage-top" : ""}`}>
+      <div className={`header-container ${animateIn ? "move-up" : ""}`}>
         <img src={logo} alt="Zenith logo" className="app-logo" />
+        <h1 className="brand-title">Zenith</h1>
       </div>
 
-      <h1 className={`brand-title ${animateIn ? "show-text" : ""}`}>Zenith</h1>
-
-      <div className={`login-content ${animateIn ? "show-content" : ""}`}>
-        <p className="login-text">Enter your 6-digit passcode to log in</p>
-
-        <div className="pin-row">
-          {pin.map((digit, index) => (
-            <div
-              key={index}
-              className={`pin-box ${activeIndex === index ? "active" : ""}`}
-              onClick={() => inputRefs.current[index]?.focus()}
-            >
-              <input
-                ref={(el) => (inputRefs.current[index] = el)}
-                type="password"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength="1"
-                value={digit}
-                onChange={(e) => handleChange(e.target.value, index)}
-                onKeyDown={(e) => handleKeyDown(e, index)}
-                onFocus={() => handleFocus(index)}
-                className="pin-input"
-              />
-              {digit && <span className="pin-dot"></span>}
+      <div className={`auth-container ${animateIn ? "fade-in" : ""}`}>
+        {!isMfaRequired ? (
+          <form onSubmit={handleInitialLogin} className="form-stack">
+            <p className="instruction-text">Secure Access</p>
+            <input 
+              type="text" 
+              className="beveled-input" 
+              placeholder="Username" 
+              value={username} 
+              onChange={(e) => setUsername(e.target.value)} 
+              required
+            />
+            <input 
+              type="password" 
+              className="beveled-input" 
+              placeholder="Password" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required
+            />
+            <button type="submit" className="beveled-button" disabled={loading}>
+              {loading ? "Authenticating..." : "Continue"}
+            </button>
+            <button type="button" className="forgot-password-link">Forgot password?</button>
+          </form>
+        ) : (
+          <div className="form-stack">
+            <p className="instruction-text">Security Verification</p>
+            <p className="otp-subtext">Enter code from your Google Authenticator app</p>
+            <div className="passcode-row">
+              {pin.map((digit, index) => (
+                <div key={index} className={`passcode-box ${activeIndex === index ? "focused" : ""}`}>
+                  <input
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength="1"
+                    value={digit}
+                    onChange={(e) => handlePinChange(e.target.value, index)}
+                    onFocus={() => setActiveIndex(index)}
+                    className="hidden-input"
+                  />
+                  {digit && <div className="blue-dot" />}
+                  {activeIndex === index && !digit && <div className="blink-cursor" />}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        
-        {/* 2. Red error text placement */}
+          </div>
+        )}
         {error && <p className="error-text">{error}</p>}
-
-        <button className="forgot-link">Forgotten passcode?</button>
       </div>
     </div>
   );
 }
 
-function HomeDashboard() {
-  // 1. Inject Backend Data
-  const user = JSON.parse(localStorage.getItem("userData"));
-  const accounts = JSON.parse(localStorage.getItem("accountData")) || [];
-  const primaryAccount = accounts[0] || {};
+// Dashboard Component[cite: 2]
+function HomeDashboard({ user, accounts }) {
+  const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.starting_balance), 0);
 
   return (
-    <div className="home-dashboard">
+    <div className="dashboard-screen">
       <div className="dashboard-header">
         <div>
           <p className="eyebrow">Welcome back</p>
-          <h1 className="dashboard-title">{user?.first_name || "Joshua"}</h1>
+          <h1 className="dashboard-title">{user?.username || 'Member'}</h1>
         </div>
-        <div className="profile-chip">{user?.first_name?.[0] || "J"}</div>
+        <div className="profile-chip">{user?.username?.charAt(0).toUpperCase()}</div>
       </div>
-
       <section className="hero-balance-card">
         <p className="hero-label">Total available</p>
-        <h2 className="hero-balance">£{parseFloat(primaryAccount.starting_balance || 28460.42).toLocaleString(undefined, {minimumFractionDigits: 2})}</h2>
+        <h2 className="hero-balance">
+          £{totalBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </h2>
         <div className="hero-meta">
-          <span>+4.8% this month</span>
-          <span>Updated just now</span>
+          <span>{accounts.length} active accounts</span>
         </div>
       </section>
-
-      <section className="account-section">
-        <div className="section-head">
-          <h3>Current account</h3>
-          <button>View all</button>
-        </div>
-
-        <div className="account-card">
-          <div className="account-top">
-            <div>
-              <p className="account-label">{primaryAccount.name || "Zenith Current"}</p>
-              <h4>£{parseFloat(primaryAccount.starting_balance || 8245.16).toLocaleString(undefined, {minimumFractionDigits: 2})}</h4>
-            </div>
-            <span className="status-pill">Active</span>
-          </div>
-
-          <div className="detail-grid">
-            <div>
-              <span>Card ending</span>
-              <strong>4821</strong>
-            </div>
-            <div>
-              <span>Sort code</span>
-              <strong>20-84-12</strong>
-            </div>
-            <div>
-              <span>Account no.</span>
-              <strong>08451276</strong>
-            </div>
-            <div>
-              <span>Available cash</span>
-              <strong>£{parseFloat(primaryAccount.starting_balance || 8245.16).toLocaleString(undefined, {minimumFractionDigits: 2})}</strong>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* The rest of the sections remain static as per original */}
-      <section className="split-section">
-        <div className="mini-card">
-          <p className="account-label">Credit account</p>
-          <h4>£2,140.83</h4>
-          <div className="mini-meta">
-            <span>Payable: £180.00</span>
-            <span>Due: 24 Apr</span>
-          </div>
-          <button className="mini-action">Make a payment</button>
-        </div>
-
-        <div className="mini-card investment-card">
-          <p className="account-label">Investment account</p>
-          <h4>£18,074.43</h4>
-          <div className="mini-meta">
-            <span>+12.4% growth</span>
-            <span>+£1,992.11</span>
-          </div>
-          <div className="growth-pill">Portfolio up this year</div>
-        </div>
-      </section>
-
-      <section className="activity-section">
-        <div className="section-head">
-          <h3>Recent activity</h3>
-          <button>See more</button>
-        </div>
-
-        <div className="activity-list">
-          <div className="activity-item">
-            <div className="activity-icon">S</div>
-            <div>
-              <strong>Spotify</strong>
-              <span>Entertainment</span>
-            </div>
-            <p>-£10.99</p>
-          </div>
-
-          <div className="activity-item">
-            <div className="activity-icon">A</div>
-            <div>
-              <strong>Amazon</strong>
-              <span>Shopping</span>
-            </div>
-            <p>-£42.50</p>
-          </div>
-
-          <div className="activity-item">
-            <div className="activity-icon positive">J</div>
-            <div>
-              <strong>JPM Project Refund</strong>
-              <span>Incoming payment</span>
-            </div>
-            <p className="positive-text">+£120.00</p>
-          </div>
-        </div>
-      </section>
+      <div className="action-grid">
+        <div className="action-item"><div className="icon-box">↑</div>Pay</div>
+        <div className="action-item"><div className="icon-box">⇄</div>Transfer</div>
+        <div className="action-item"><div className="icon-box">📋</div>Report</div>
+      </div>
     </div>
   );
 }
