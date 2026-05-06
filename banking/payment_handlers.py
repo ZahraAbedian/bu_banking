@@ -101,3 +101,54 @@ def handle_authorize_request(item):
             approve=True,
             response_code=RESPONSE_APPROVED,
         )
+
+
+from decimal import Decimal
+from .models import Card, Transaction, Business
+
+
+def handle_transaction_update(item):
+    payload = item.get("payload") or item
+
+    card_number = payload.get("card_number")
+    amount = Decimal(str(payload.get("amount", "0")))
+    merchant_id = payload.get("merchant_id") or "unknown"
+    status_value = payload.get("status")
+
+    print("TRANSACTION UPDATE:", payload)
+
+    if status_value not in ["authorized", "approved", "settled"]:
+        print("Ignoring non-approved transaction update:", status_value)
+        return
+
+    try:
+        card = Card.objects.select_related("account").get(
+            card_number=card_number,
+            active=True,
+        )
+    except Card.DoesNotExist:
+        print("Transaction update ignored: card not found")
+        return
+
+    account = card.account
+
+    account.starting_balance -= amount
+    account.save()
+
+    business, _ = Business.objects.get_or_create(
+        id=merchant_id,
+        defaults={
+            "name": merchant_id,
+            "category": "External Merchant",
+            "sanctioned": False,
+        },
+    )
+
+    Transaction.objects.create(
+        transaction_type="payment",
+        amount=amount,
+        from_account=account,
+        business=business,
+    )
+
+    print("Local transaction saved from transaction_update")

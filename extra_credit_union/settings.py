@@ -19,10 +19,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 env_path = BASE_DIR / ".env"
 result = load_dotenv(env_path)
 
-if not result:
-    print(f"Critical: ENV has not been loaded at {env_path}")
-else:
-    print(f"Success: Env loaded at {env_path}")
+### this is a simple debug statement to test envs
+
+# if not result:
+#     print(f"Critical: ENV has not been loaded at {env_path}")
+# else:
+#     print(f"Success: Env loaded at {env_path}")
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
@@ -154,7 +156,7 @@ CORS_ALLOWED_ORIGINS = [
 
 PAYMENT_NETWORK_BASE_URL = os.getenv(
     "PAYMENT_NETWORK_BASE_URL",
-     "https://paymentsystem-cards-cf.pa ges.dev"
+     "https://paymentsystem-cards-cf.pages.dev"
 )
 
 PAYMENT_BANK_ID = os.getenv(
