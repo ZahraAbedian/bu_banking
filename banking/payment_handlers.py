@@ -1,4 +1,4 @@
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django.db import transaction
 from .models import Card, Transaction, Business
 from .payment_network import respond_to_authorization
@@ -25,8 +25,6 @@ def handle_authorize_request(item):
     print("CARD NUMBER:", card_number)
     print("MERCHANT ID:", merchant_id)
     
-
-
     try:
         amount = Decimal(str(payload.get("amount")))
         print("AMOUNT:", amount)

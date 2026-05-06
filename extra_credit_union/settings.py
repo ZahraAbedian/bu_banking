@@ -14,22 +14,20 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env") 
+env_path = BASE_DIR / ".env"
+result = load_dotenv(env_path)
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
+### this is a simple debug statement to test envs
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-r4e9i4^(%pp-)d*%u%@6v420jyp8x93w^+*id9hkzslr8a*5ww'
+# if not result:
+#     print(f"Critical: ENV has not been loaded at {env_path}")
+# else:
+#     print(f"Success: Env loaded at {env_path}")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
-
+SECRET_KEY = os.getenv('SECRET_KEY')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 # Application definition
 
@@ -41,11 +39,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
     'banking',
     #TASK1 Add swagger
     'rest_framework_swagger',
     'drf_yasg',
-    'corsheaders',
+    'corsheaders'
     #ENDTASK1
 
 ]
@@ -54,13 +54,17 @@ MIDDLEWARE = [
     
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Add this line
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware'
 ]
+
+OTP_TOTP_ISSUER = os.getenv('OTP_TOTP_ISSUER', 'Extra Credit Union')
 
 ROOT_URLCONF = 'extra_credit_union.urls'
 
@@ -143,8 +147,11 @@ REST_FRAMEWORK = {
     ),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True  # For development only, don't use in production
-CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:5173"
+]
 
 
 PAYMENT_NETWORK_BASE_URL = os.getenv(
@@ -158,7 +165,14 @@ PAYMENT_BANK_ID = os.getenv(
 )
 
 PAYMENT_API_KEY =  os.getenv(
-    "PAYMENT_API_KEY",
-    ""
+    "PAYMENT_API_KEY"
 )
 
+# Add this to handle CSRF for local development
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+# Ensure CORS allows the React headers
+CORS_ALLOW_CREDENTIALS = True

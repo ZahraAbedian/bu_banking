@@ -1,10 +1,16 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth.models import User
+from django_otp.plugins.otp_totp.models import TOTPDevice
 from .models import Account
 from decimal import Decimal
 
 @receiver(post_save, sender=User)
+
+def create_2fa_device(sender, instance, created, **kwargs):
+    if created:
+        TOTPDevice.objects.create(user=instance, name='Default', confirmed=False)
+
 def create_default_accounts(sender, instance, created, **kwargs):
     """
     Signal to create default Current and Savings accounts when a new user is created.
